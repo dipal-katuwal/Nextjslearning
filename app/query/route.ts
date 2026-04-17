@@ -1,26 +1,26 @@
-// import postgres from 'postgres';
-
-// const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
-
-// async function listInvoices() {
-// 	const data = await sql`
-//     SELECT invoices.amount, customers.name
-//     FROM invoices
-//     JOIN customers ON invoices.customer_id = customers.id
-//     WHERE invoices.amount = 666;
-//   `;
-
-// 	return data;
-// }
+import { dbConnect } from '@/app/lib/dbConnect';
+import { Invoice } from '@/app/lib/models';
 
 export async function GET() {
-  return Response.json({
-    message:
-      'Uncomment this file and remove this line. You can delete this file when you are finished.',
-  });
-  // try {
-  // 	return Response.json(await listInvoices());
-  // } catch (error) {
-  // 	return Response.json({ error }, { status: 500 });
-  // }
+  await dbConnect();
+
+  try {
+    // Equivalent to: SELECT invoices.amount, customers.name
+    // FROM invoices JOIN customers ON invoices.customer_id = customers.id
+    // WHERE invoices.amount = 666;
+    
+    const data = await Invoice.find({ amount: 666 })
+      .populate('customer_id', 'name') // Only fetch the name from the Customer model
+      .exec();
+
+    // Map the data to clean up the MongoDB-specific fields if necessary
+    const formattedData = data.map((invoice) => ({
+      amount: invoice.amount,
+      name: invoice.customer_id.name,
+    }));
+
+    return Response.json(formattedData);
+  } catch (error) {
+    return Response.json({ error }, { status: 500 });
+  }
 }
