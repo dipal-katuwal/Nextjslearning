@@ -1,12 +1,14 @@
 import { dbConnect } from './dbConnect';
 import { Revenue, Invoice, Customer } from './models';
-import { formatCurrency } from './utils'; // Tutorial utility for formatting
+import { formatCurrency } from './utils';
 
+const ITEMS_PER_PAGE = 6;
+
+// 1. Fetch Revenue Data (for the RevenueChart component)
 export async function fetchRevenue() {
   await dbConnect();
   try {
-    // Fetch all revenue documents from MongoDB
-    const data = await Revenue.find({});
+    const data = await Revenue.find({}).lean();
     return data;
   } catch (error) {
     console.error('Database Error:', error);
@@ -14,17 +16,17 @@ export async function fetchRevenue() {
   }
 }
 
+// 2. Fetch Latest Invoices (for the LatestInvoices component)
 export async function fetchLatestInvoices() {
   await dbConnect();
   try {
-    // Populate replaces the SQL JOIN
     const data = await Invoice.find({})
-      .sort({ date: -1 }) // Sort by newest first
+      .sort({ date: -1 })
       .limit(5)
-      .populate('customer_id');
+      .populate('customer_id')
+      .lean();
 
-    // Format the data to match the UI expectations
-    return data.map((invoice) => ({
+    return data.map((invoice: any) => ({
       id: invoice._id.toString(),
       name: invoice.customer_id.name,
       image_url: invoice.customer_id.image_url,
@@ -37,15 +39,12 @@ export async function fetchLatestInvoices() {
   }
 }
 
+// 3. Fetch Card Totals (for the CardWrapper component)
 export async function fetchCardData() {
-  
   await dbConnect();
   try {
-    // Running queries in parallel for efficiency
     const invoiceCountPromise = Invoice.countDocuments();
     const customerCountPromise = Customer.countDocuments();
-    
-    // Aggregation to sum amounts based on status
     const invoiceStatusPromise = Invoice.aggregate([
       {
         $group: {
@@ -76,5 +75,85 @@ export async function fetchCardData() {
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch card data.');
+  }
+}
+
+// 4. Fetch Filtered Invoices (for the Invoices Table with Search)
+export async function fetchFilteredInvoices(query: string, currentPage: number) {
+  await dbConnect();
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  try {
+    const invoices = await Invoice.aggregate([
+      {
+        $lookup: {
+          from: 'customers', // Must match your MongoDB collection name
+          localField: 'customer_id',
+          foreignField: '_id',
+          as: 'customer',
+        },
+      },
+      { $unwind: '$customer' },
+      {
+        $match: {
+          $or: [
+            { 'customer.name': { $regex: query, $options: 'i' } },
+            { 'customer.email': { $regex: query, $options: 'i' } },
+            { status: { $regex: query, $options: 'i' } },
+          ],
+        },
+      },
+      { $sort: { date: -1 } },
+      { $skip: offset },
+      { $limit: ITEMS_PER_PAGE },
+    ]);
+
+    return invoices.map((invoice) => ({
+      id: invoice._id.toString(),
+      customer_id: invoice.customer_id.toString(),
+      name: invoice.customer.name,
+      email: invoice.customer.email,
+      image_url: invoice.customer.image_url,
+      amount: invoice.amount,
+      date: invoice.date,
+      status: invoice.status,
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch invoices.');
+  }
+}
+
+// 5. Fetch Total Pages (for Pagination logic)
+export async function fetchInvoicesPages(query: string) {
+  await dbConnect();
+  try {
+    const count = await Invoice.aggregate([
+      {
+        $lookup: {
+          from: 'customers',
+          localField: 'customer_id',
+          foreignField: '_id',
+          as: 'customer',
+        },
+      },
+      { $unwind: '$customer' },
+      {
+        $match: {
+          $or: [
+            { 'customer.name': { $regex: query, $options: 'i' } },
+            { 'customer.email': { $regex: query, $options: 'i' } },
+            { status: { $regex: query, $options: 'i' } },
+          ],
+        },
+      },
+      { $count: 'total' },
+    ]);
+
+    const totalPages = Math.ceil((count[0]?.total || 0) / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total number of invoices.');
   }
 }
