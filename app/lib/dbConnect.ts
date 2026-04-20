@@ -9,6 +9,7 @@ if (!MONGODB_URI) {
 // Check if we have a cached connection to prevent multiple handshakes
 let cached = (global as any).mongoose;
 
+
 if (!cached) {
   cached = (global as any).mongoose = { conn: null, promise: null };
 }
