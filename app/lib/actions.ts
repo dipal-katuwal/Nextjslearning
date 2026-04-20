@@ -8,8 +8,43 @@ import { redirect } from 'next/navigation';
 
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
+import bcrypt from 'bcrypt';
+import { User } from '@/app/lib/models';
 
+export async function registerUser(
+  prevState: string | undefined, 
+  formData: FormData
+) {
+  let isSuccess = false;
 
+  try {
+    await dbConnect();
+    
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const password = formData.get('password') as string;
+
+    const userExists = await User.findOne({ email });
+    if (userExists) return 'User already exists.';
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await User.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
+
+    isSuccess = true;
+  } catch (error) {
+    console.error(error);
+    return 'Something went wrong during registration.';
+  }
+
+  // Next.js redirect must be called outside of try/catch
+  if (isSuccess) {
+    redirect('/login'); 
+  }
+}
 
 export async function authenticate(
   prevState: string | undefined,
