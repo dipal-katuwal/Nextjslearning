@@ -1,277 +1,102 @@
-import { dbConnect } from './dbConnect';
-import { Revenue, Invoice, Customer } from './models';
-import { formatCurrency } from './utils';
+import { getAqiStatus } from './aqi';
+import type { DashboardData, AirQualityData, LoadSheddingData, RashifalData } from './types';
 
-const ITEMS_PER_PAGE = 6;
+const PRIORITY_CURRENCIES = ['USD', 'INR', 'AED', 'QAR', 'GBP', 'EUR', 'SAR'];
 
-// 1. Fetch Revenue Data (for the RevenueChart component)
-export async function fetchRevenue() {
-  await dbConnect();
-  try {
-    const data = await Revenue.find({}).lean();
- 
-    return data;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch revenue data.');
-  }
-}
+// ─── Mock / fallback data (used when no DB / cold start) ──────────────────────
+export function getMockDashboard(): DashboardData {
+  const today = new Date().toISOString().split('T')[0];
+  const aqiRaw = { aqi: 185, pm25: 142, city: 'Kathmandu' };
+  const aqiInfo = getAqiStatus(aqiRaw.aqi);
+  const airQuality: AirQualityData = { ...aqiRaw, ...aqiInfo, updatedAt: new Date().toISOString() };
 
-// 2. Fetch Latest Invoices (for the LatestInvoices component)
-export async function fetchLatestInvoices() {
-  await dbConnect();
-  try {
-    const data = await Invoice.find({})
-      .sort({ date: -1 })
-      .limit(5)
-      .populate('customer_id')
-      .lean();
+  const loadShedding: LoadSheddingData = {
+    group: 1,
+    todayTimes: ['06:00-09:00', '19:00-22:00'],
+    schedule: [
+      { day: 'Sunday',    times: ['06:00-09:00', '19:00-22:00'] },
+      { day: 'Monday',    times: ['07:00-10:00'] },
+      { day: 'Tuesday',   times: ['08:00-11:00', '18:00-21:00'] },
+      { day: 'Wednesday', times: ['06:00-09:00'] },
+      { day: 'Thursday',  times: ['07:00-10:00', '20:00-23:00'] },
+      { day: 'Friday',    times: ['08:00-11:00'] },
+      { day: 'Saturday',  times: [] },
+    ],
+    updatedAt: new Date().toISOString(),
+  };
 
-    return data.map((invoice: any) => ({
-      id: invoice._id.toString(),
-      name: invoice.customer_id.name,
-      image_url: invoice.customer_id.image_url,
-      email: invoice.customer_id.email,
-      amount: formatCurrency(invoice.amount),
-    }));
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the latest invoices.');
-  }
-}
+  const SIGNS = [
+    { sign: 'Aries',       signNepali: 'मेष'     },
+    { sign: 'Taurus',      signNepali: 'वृष'     },
+    { sign: 'Gemini',      signNepali: 'मिथुन'   },
+    { sign: 'Cancer',      signNepali: 'कर्कट'   },
+    { sign: 'Leo',         signNepali: 'सिंह'    },
+    { sign: 'Virgo',       signNepali: 'कन्या'   },
+    { sign: 'Libra',       signNepali: 'तुला'    },
+    { sign: 'Scorpio',     signNepali: 'वृश्चिक' },
+    { sign: 'Sagittarius', signNepali: 'धनु'     },
+    { sign: 'Capricorn',   signNepali: 'मकर'    },
+    { sign: 'Aquarius',    signNepali: 'कुम्भ'   },
+    { sign: 'Pisces',      signNepali: 'मीन'     },
+  ];
+  const TEXTS: Record<string, string> = {
+    Aries: 'आज तपाईंको दिन सकारात्मक छ। नयाँ काम सुरु गर्न उपयुक्त समय हो।',
+    Taurus: 'आर्थिक मामिलामा सतर्क रहनुहोस्। परिवारसँग समय बिताउनुहोस्।',
+    Gemini: 'सञ्चार कुशलता काममा आउँछ। साथीहरूसँग भेटघाट राम्रो हुन्छ।',
+    Cancer: 'घरपरिवारमा खुशी छ। स्वास्थ्यमा ध्यान दिनुहोस्।',
+    Leo: 'नेतृत्वको अवसर आउँछ। आत्मविश्वास राख्नुहोस्।',
+    Virgo: 'कामको बोझ बढी हुन सक्छ। व्यवस्थित रहनुहोस्।',
+    Libra: 'सम्बन्धमा सन्तुलन राख्नुहोस्। कलासँग सम्बन्धित काम फल्छ।',
+    Scorpio: 'अनुसन्धानमा सफलता मिल्छ। गोप्य कुरा नबाँड्नुहोस्।',
+    Sagittarius: 'यात्रा र ज्ञानमा रुचि बढ्छ। उच्च शिक्षामा अवसर छ।',
+    Capricorn: 'मेहनतको फल मिल्छ। करियरमा प्रगति हुन्छ।',
+    Aquarius: 'सामाजिक कार्यमा संलग्नता बढ्छ। नवाचारमा सफलता छ।',
+    Pisces: 'आध्यात्मिकतामा झुकाव बढ्छ। सपनाहरू पूरा हुने संकेत छ।',
+  };
+  const rashifal: RashifalData[] = SIGNS.map((s, i) => ({
+    ...s,
+    text: TEXTS[s.sign] || 'आज राम्रो दिन हो।',
+    luckyNumber: String((i % 9) + 1),
+    luckyColor: ['रातो', 'हरियो', 'नीलो', 'पहेंलो', 'सेतो'][i % 5],
+    date: today,
+    updatedAt: new Date().toISOString(),
+  }));
 
-// 3. Fetch Card Totals (for the CardWrapper component)
-export async function fetchCardData() {
-  await dbConnect();
-  try {
-    const invoiceCountPromise = Invoice.countDocuments();
-    const customerCountPromise = Customer.countDocuments();
-    const invoiceStatusPromise = Invoice.aggregate([
-      {
-        $group: {
-          _id: null,
-          paid: { $sum: { $cond: [{ $eq: ['$status', 'paid'] }, '$amount', 0] } },
-          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0] } },
-        },
-      },
-    ]);
-
-    const data = await Promise.all([
-      invoiceCountPromise,
-      customerCountPromise,
-      invoiceStatusPromise,
-    ]);
-
-    const numberOfInvoices = Number(data[0] ?? '0');
-    const numberOfCustomers = Number(data[1] ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2][0]?.paid ?? 0);
-    const totalPendingInvoices = formatCurrency(data[2][0]?.pending ?? 0);
-
-    return {
-      numberOfCustomers,
-      numberOfInvoices,
-      totalPaidInvoices,
-      totalPendingInvoices,
-    };
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch card data.');
-  }
-}
-
-// 4. Fetch Filtered Invoices (for the Invoices Table with Search)
-export async function fetchFilteredInvoices(query: string, currentPage: number) {
-  await dbConnect();
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-
-  try {
-    const invoices = await Invoice.aggregate([
-      {
-        $lookup: {
-          from: 'customers', // Must match your MongoDB collection name
-          localField: 'customer_id',
-          foreignField: '_id',
-          as: 'customer',
-        },
-      },
-      { $unwind: '$customer' },
-      {
-        $match: {
-          $or: [
-            { 'customer.name': { $regex: query, $options: 'i' } },
-            { 'customer.email': { $regex: query, $options: 'i' } },
-            { status: { $regex: query, $options: 'i' } },
-          ],
-        },
-      },
-      { $sort: { date: -1 } },
-      { $skip: offset },
-      { $limit: ITEMS_PER_PAGE },
-    ]);
-
-    return invoices.map((invoice) => ({
-      id: invoice._id.toString(),
-      customer_id: invoice.customer_id.toString(),
-      name: invoice.customer.name,
-      email: invoice.customer.email,
-      image_url: invoice.customer.image_url,
-      amount: invoice.amount,
-      date: invoice.date,
-      status: invoice.status,
-    }));
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoices.');
-  }
-}
-
-// 5. Fetch Total Pages (for Pagination logic)
-export async function fetchInvoicesPages(query: string) {
-  await dbConnect();
-  try {
-    const count = await Invoice.aggregate([
-      {
-        $lookup: {
-          from: 'customers',
-          localField: 'customer_id',
-          foreignField: '_id',
-          as: 'customer',
-        },
-      },
-      { $unwind: '$customer' },
-      {
-        $match: {
-          $or: [
-            { 'customer.name': { $regex: query, $options: 'i' } },
-            { 'customer.email': { $regex: query, $options: 'i' } },
-            { status: { $regex: query, $options: 'i' } },
-          ],
-        },
-      },
-      { $count: 'total' },
-    ]);
-
-    const totalPages = Math.ceil((count[0]?.total || 0) / ITEMS_PER_PAGE);
-    return totalPages;
-  } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch total number of invoices.');
-  }
-}
-
-// 6. Fetch all customers (for the dropdown in Create/Edit Invoice)
-export async function fetchCustomers() {
-  await dbConnect();
-  try {
-    const customers = await Customer.find({})
-      .sort({ name: 1 })
-      .lean();
-
-    const formattedCustomers = customers.map((customer: any) => ({
-      id: customer._id.toString(),
-      name: customer.name,
-    }));
-
-    return formattedCustomers;
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch all customers.');
-  }
-}
-
-// 7. Fetch a single invoice by ID (for the Edit Invoice page)
-import mongoose from 'mongoose';
-
-export async function fetchInvoiceById(id: string) {
-  await dbConnect();
-  
-  // 1. Validation Guard
-  // If the ID isn't a valid hex string, findById will crash. 
-  // We return null early to trigger the notFound() in your page.tsx.
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return null;
-  }
-
-  try {
-    // 2. Fetch with .lean() for performance
-    const invoice: any = await Invoice.findById(id).lean();
-
-    // 3. Handle "Not Found" case
-    if (!invoice) return null;
-
-    // 4. Return a Plain Old JavaScript Object (POJO)
-    return {
-      id: invoice._id.toString(),
-      customer_id: invoice.customer_id.toString(),
-      amount: invoice.amount, 
-      status: invoice.status,
-    };
-  } catch (error) {
-    // Only log actual database/connection errors here
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch invoice.');
-  }
-}
-
-// 8. Fetch filtered customers (if you plan to use the Customers page)
-export async function fetchFilteredCustomers(query: string) {
-  await dbConnect();
-  try {
-    const data = await Customer.aggregate([
-      {
-        $match: {
-          $or: [
-            { name: { $regex: query, $options: 'i' } },
-            { email: { $regex: query, $options: 'i' } },
-          ],
-        },
-      },
-      {
-        $lookup: {
-          from: 'invoices',
-          localField: '_id',
-          foreignField: 'customer_id',
-          as: 'invoices',
-        },
-      },
-      {
-        $project: {
-          id: '$_id',
-          name: 1,
-          email: 1,
-          image_url: 1,
-          total_invoices: { $size: '$invoices' },
-          total_pending: {
-            $sum: {
-              $map: {
-                input: '$invoices',
-                as: 'inv',
-                in: { $cond: [{ $eq: ['$$inv.status', 'pending'] }, '$$inv.amount', 0] },
-              },
-            },
-          },
-          total_paid: {
-            $sum: {
-              $map: {
-                input: '$invoices',
-                as: 'inv',
-                in: { $cond: [{ $eq: ['$$inv.status', 'paid'] }, '$$inv.amount', 0] },
-              },
-            },
-          },
-        },
-      },
-      { $sort: { name: 1 } },
-    ]);
-
-    return data.map((customer) => ({
-      ...customer,
-      id: customer._id.toString(),
-      total_pending: formatCurrency(customer.total_pending),
-      total_paid: formatCurrency(customer.total_paid),
-    }));
-  } catch (err) {
-    console.error('Database Error:', err);
-    throw new Error('Failed to fetch customer table.');
-  }
+  return {
+    nepse: {
+      index: 2847.3,
+      change: -12.5,
+      changePercent: -0.44,
+      turnover: 3.2,
+      sensitiveIndex: 994.7,
+      gainers: [{ symbol: 'NABIL', change: 5.2 }, { symbol: 'NICA', change: 4.1 }, { symbol: 'SCB', change: 3.8 }],
+      losers: [{ symbol: 'API', change: -4.9 }, { symbol: 'SPDL', change: -3.7 }, { symbol: 'NTC', change: -2.1 }],
+      updatedAt: new Date().toISOString(),
+    },
+    forex: {
+      publishedDate: today,
+      rates: [
+        { currency: 'USD', buy: 136.40, sell: 137.00, prevBuy: 136.10 },
+        { currency: 'INR', buy: 1.60,   sell: 1.62,   prevBuy: 1.60  },
+        { currency: 'AED', buy: 37.14,  sell: 37.40,  prevBuy: 37.00 },
+        { currency: 'QAR', buy: 37.45,  sell: 37.71,  prevBuy: 37.30 },
+        { currency: 'GBP', buy: 171.20, sell: 172.40, prevBuy: 170.80},
+        { currency: 'EUR', buy: 147.50, sell: 148.60, prevBuy: 146.90},
+        { currency: 'SAR', buy: 36.37,  sell: 36.62,  prevBuy: 36.20 },
+      ],
+      updatedAt: new Date().toISOString(),
+    },
+    fuel: {
+      petrol: 217,
+      diesel: 203,
+      lpg: 1700,
+      lastRevision: 'May 1, 2026',
+      prevPetrol: 217,
+      priceChanged: false,
+      updatedAt: new Date().toISOString(),
+    },
+    airQuality,
+    loadShedding,
+    rashifal,
+  };
 }

@@ -8,25 +8,25 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      gridTemplateColumns: {
-        '13': 'repeat(13, minmax(0, 1fr))',
-      },
       colors: {
-        blue: {
-          400: '#2589FE',
-          500: '#0070F3',
-          600: '#2F6FEB',
+        sangatho: {
+          navy: '#1E3A5F',
+          green: '#16A34A',
+          red: '#DC2626',
+          gray: '#6B7280',
+        },
+        aqi: {
+          good: '#16A34A',
+          moderate: '#CA8A04',
+          unhealthy: '#EA580C',
+          hazardous: '#7C2D12',
         },
       },
-    },
-    keyframes: {
-      shimmer: {
-        '100%': {
-          transform: 'translateX(100%)',
-        },
+      fontFamily: {
+        devanagari: ['Noto Sans Devanagari', 'sans-serif'],
       },
     },
   },
-  plugins: [require('@tailwindcss/forms')],
+  plugins: [],
 };
 export default config;

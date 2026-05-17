@@ -1,33 +1,123 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
-// 1. User Schema (New)
-const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, // Hashed password will be stored here
+// ─── NEPSE ─────────────────────────────────────────────────────────────────
+export interface INepse extends Document {
+  index: number;
+  change: number;
+  changePercent: number;
+  turnover: number;
+  sensitiveIndex: number;
+  gainers: { symbol: string; change: number }[];
+  losers: { symbol: string; change: number }[];
+  updatedAt: Date;
+}
+
+const NepseSchema = new Schema<INepse>({
+  index: Number,
+  change: Number,
+  changePercent: Number,
+  turnover: Number,
+  sensitiveIndex: Number,
+  gainers: [{ symbol: String, change: Number }],
+  losers: [{ symbol: String, change: Number }],
+  updatedAt: { type: Date, default: Date.now },
 });
 
-// 2. Existing Schemas
-const CustomerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true },
-  image_url: { type: String, required: true },
+export const Nepse: Model<INepse> =
+  mongoose.models.Nepse || mongoose.model<INepse>('Nepse', NepseSchema);
+
+// ─── FOREX ─────────────────────────────────────────────────────────────────
+export interface IForex extends Document {
+  rates: { currency: string; buy: number; sell: number; prevBuy: number }[];
+  publishedDate: string;
+  updatedAt: Date;
+}
+
+const ForexSchema = new Schema<IForex>({
+  rates: [{ currency: String, buy: Number, sell: Number, prevBuy: Number }],
+  publishedDate: String,
+  updatedAt: { type: Date, default: Date.now },
 });
 
-const InvoiceSchema = new mongoose.Schema({
-  customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
-  amount: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'paid'], required: true, index: true },
-  date: { type: Date, default: Date.now },
+export const Forex: Model<IForex> =
+  mongoose.models.Forex || mongoose.model<IForex>('Forex', ForexSchema);
+
+// ─── FUEL ──────────────────────────────────────────────────────────────────
+export interface IFuel extends Document {
+  petrol: number;
+  diesel: number;
+  lpg: number;
+  lastRevision: string;
+  prevPetrol: number;
+  updatedAt: Date;
+}
+
+const FuelSchema = new Schema<IFuel>({
+  petrol: Number,
+  diesel: Number,
+  lpg: Number,
+  lastRevision: String,
+  prevPetrol: Number,
+  updatedAt: { type: Date, default: Date.now },
 });
 
-const RevenueSchema = new mongoose.Schema({
-  month: { type: String, required: true },
-  revenue: { type: Number, required: true },
+export const Fuel: Model<IFuel> =
+  mongoose.models.Fuel || mongoose.model<IFuel>('Fuel', FuelSchema);
+
+// ─── AIR QUALITY ───────────────────────────────────────────────────────────
+export interface IAirQuality extends Document {
+  city: string;
+  aqi: number;
+  pm25: number;
+  updatedAt: Date;
+}
+
+const AirQualitySchema = new Schema<IAirQuality>({
+  city: String,
+  aqi: Number,
+  pm25: Number,
+  updatedAt: { type: Date, default: Date.now },
 });
 
-// Export all models
-export const User = mongoose.models.User || mongoose.model('User', UserSchema);
-export const Customer = mongoose.models.Customer || mongoose.model('Customer', CustomerSchema);
-export const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema);
-export const Revenue = mongoose.models.Revenue || mongoose.model('Revenue', RevenueSchema);
+export const AirQuality: Model<IAirQuality> =
+  mongoose.models.AirQuality || mongoose.model<IAirQuality>('AirQuality', AirQualitySchema);
+
+// ─── LOAD SHEDDING ─────────────────────────────────────────────────────────
+export interface ILoadShedding extends Document {
+  group: number;
+  schedule: { day: string; times: string[] }[];
+  updatedAt: Date;
+}
+
+const LoadSheddingSchema = new Schema<ILoadShedding>({
+  group: Number,
+  schedule: [{ day: String, times: [String] }],
+  updatedAt: { type: Date, default: Date.now },
+});
+
+export const LoadShedding: Model<ILoadShedding> =
+  mongoose.models.LoadShedding || mongoose.model<ILoadShedding>('LoadShedding', LoadSheddingSchema);
+
+// ─── RASHIFAL ──────────────────────────────────────────────────────────────
+export interface IRashifal extends Document {
+  sign: string;
+  signNepali: string;
+  text: string;
+  luckyNumber: string;
+  luckyColor: string;
+  date: string;
+  updatedAt: Date;
+}
+
+const RashifalSchema = new Schema<IRashifal>({
+  sign: String,
+  signNepali: String,
+  text: String,
+  luckyNumber: String,
+  luckyColor: String,
+  date: String,
+  updatedAt: { type: Date, default: Date.now },
+});
+
+export const Rashifal: Model<IRashifal> =
+  mongoose.models.Rashifal || mongoose.model<IRashifal>('Rashifal', RashifalSchema);

@@ -1,18 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-input[type='number'] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+:root {
+  --sangatho-navy: #1E3A5F;
 }
 
-input[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+body {
+  font-family: 'Inter', 'Noto Sans Devanagari', sans-serif;
+  background: #F8FAFC;
 }
 
-input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.devanagari {
+  font-family: 'Noto Sans Devanagari', sans-serif;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

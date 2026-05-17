@@ -1,24 +1,31 @@
-import '@/app/ui/global.css';
-import { inter } from '@/app/ui/fonts';
-import { Metadata } from 'next';
+import './ui/global.css';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: {
-    template: '%s | Acme Dashboard',
-    default: 'Acme Dashboard',
+  title: 'sangatho — आजको नेपाल, एकै ठाउँमा',
+  description: "Nepal's daily information dashboard: NEPSE, forex, fuel prices, load shedding, air quality, and rashifal — all in one place.",
+  metadataBase: new URL('https://sangatho.com.np'),
+  openGraph: {
+    title: 'sangatho',
+    description: 'आजको नेपाल, एकै ठाउँमा।',
+    siteName: 'Sangatho',
+    locale: 'ne_NP',
+    type: 'website',
   },
-  description: 'The official Next.js Learn Dashboard built with App Router.',
-  metadataBase: new URL('https://next-learn-dashboard.vercel.sh'),
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className = {`${inter.className} antialiased`}>{children}</body>
+    <html lang="ne">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased bg-gray-50 min-h-screen">{children}</body>
     </html>
   );
 }
